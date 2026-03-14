@@ -2,7 +2,7 @@ name: Mirror Upstream (Force Except Workflows + Index + /READMR.md /_layouts/a.h
 
 on:
   schedule:
-    - cron: "0 0 */1 * *"
+    - cron: "0 0 */7 * *"
   workflow_dispatch:
 
 permissions:
