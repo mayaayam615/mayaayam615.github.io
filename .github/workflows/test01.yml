@@ -1,0 +1,110 @@
+name: Mirror Upstream (Force Except Workflows + Index + /READMR.md /_layouts/a.html /_layouts/b.html /categories/  _config.yml)
+
+on:
+  schedule:
+    - cron: "0 0 */7 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Save local files
+        run: |
+          mkdir -p /tmp/backup
+          
+          if [ -d ".github/workflows" ]; then
+            cp -r .github/workflows /tmp/backup/
+          fi
+          
+          if [ -f "index.html" ]; then
+            cp index.html /tmp/backup/
+          fi
+
+          if [ -f "README.md" ]; then
+            cp README.md /tmp/backup/
+          fi
+
+          if [ -f "_layouts/a.html" ]; then
+            mkdir -p /tmp/backup/_layouts
+            cp _layouts/a.html /tmp/backup/_layouts/
+          fi
+
+          if [ -f "_layouts/b.html" ]; then
+            mkdir -p /tmp/backup/_layouts
+            cp _layouts/b.html /tmp/backup/_layouts/
+          fi
+
+          if [ -d "categories" ]; then
+            cp -r categories /tmp/backup/
+          fi
+
+          if [ -f "_config.yml" ]; then
+            cp _config.yml /tmp/backup/
+          fi
+
+      - name: Add upstream
+        run: |
+          git remote remove upstream || true
+          git remote add upstream https://github.com/nengmaya538/nengmaya538.github.io.git
+          git fetch upstream
+
+      - name: Hard reset to upstream
+        run: |
+          git reset --hard upstream/master
+
+      - name: Restore excluded files
+        run: |
+          rm -rf .github/workflows
+          
+          if [ -d "/tmp/backup/workflows" ]; then
+            mkdir -p .github
+            cp -r /tmp/backup/workflows .github/
+          fi
+          
+          if [ -f "/tmp/backup/index.html" ]; then
+            cp /tmp/backup/index.html index.html
+          fi
+
+          if [ -f "/tmp/backup/README.md" ]; then
+            cp /tmp/backup/README.md README.md
+          fi
+
+          if [ -f "/tmp/backup/_layouts/a.html" ]; then
+            mkdir -p _layouts
+            cp /tmp/backup/_layouts/a.html _layouts/
+          fi
+
+          if [ -f "/tmp/backup/_layouts/b.html" ]; then
+            mkdir -p _layouts
+            cp /tmp/backup/_layouts/b.html _layouts/
+          fi
+
+          if [ -d "/tmp/backup/categories" ]; then
+            cp -r /tmp/backup/categories .
+          fi
+
+          if [ -f "/tmp/backup/_config.yml" ]; then
+            cp /tmp/backup/_config.yml _config.yml
+          fi
+
+      - name: Force push to fork
+        run: |
+          git add .
+          git commit -m "Force sync except workflows, index.html, README, layouts, categories, config" || echo "No changes"
+          git push origin master --force
